@@ -30,7 +30,8 @@ export default function TopicPage() {
       return
     }
 
-    const topicData = courseData.topics.find((t) => t.id === topicId)
+    const sortedTopics = [...courseData.topics].sort((a, b) => a.unitNumber - b.unitNumber)
+    const topicData = sortedTopics.find((t) => t.id === topicId)
     if (!topicData) {
       router.push(`/courses/${courseId}`)
       return
