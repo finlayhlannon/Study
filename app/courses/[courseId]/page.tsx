@@ -23,8 +23,8 @@ export default function CoursePage() {
   const { getCourse, deleteCourse } = useCourses()
   const [course, setCourse] = useState<{ id: string; name: string; topics: Topic[] } | null>(null)
   
-  // New state for sorting
-  const [sortBy, setSortBy] = useState<'unitNumber' | 'knowledgeLevel'>('unitNumber')
+  // Updated to include 'dueDate' in sorting options
+  const [sortBy, setSortBy] = useState<'unitNumber' | 'knowledgeLevel' | 'dueDate'>('unitNumber')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
@@ -34,11 +34,22 @@ export default function CoursePage() {
       return
     }
     
-    // Sort topics based on current sort settings
+    // Enhanced sorting logic to handle different sort criteria
     const sortedTopics = [...courseData.topics].sort((a, b) => {
-      const comparison = sortBy === 'unitNumber' 
-        ? a.unitNumber - b.unitNumber 
-        : a.knowledgeLevel - b.knowledgeLevel;
+      let comparison: number;
+      switch (sortBy) {
+        case 'unitNumber':
+          comparison = a.unitNumber - b.unitNumber;
+          break;
+        case 'knowledgeLevel':
+          comparison = a.knowledgeLevel - b.knowledgeLevel;
+          break;
+        case 'dueDate':
+          comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          break;
+        default:
+          comparison = 0;
+      }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
@@ -52,7 +63,7 @@ export default function CoursePage() {
     }
   }
 
-  const handleSortChange = (newSortBy: 'unitNumber' | 'knowledgeLevel') => {
+  const handleSortChange = (newSortBy: 'unitNumber' | 'knowledgeLevel' | 'dueDate') => {
     // If sorting by the same column, toggle direction
     if (newSortBy === sortBy) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -92,7 +103,13 @@ export default function CoursePage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <ArrowUpDown className="mr-2 h-4 w-4" />
-                  Sort By: {sortBy === 'unitNumber' ? 'Unit Number' : 'Knowledge Level'}
+                  Sort By: {
+                    sortBy === 'unitNumber' 
+                      ? 'Unit Number' 
+                      : sortBy === 'knowledgeLevel' 
+                        ? 'Knowledge Level' 
+                        : 'Due Date'
+                  }
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -101,6 +118,9 @@ export default function CoursePage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSortChange('knowledgeLevel')}>
                   Knowledge Level {sortBy === 'knowledgeLevel' && (sortDirection === 'asc' ? '▲' : '▼')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('dueDate')}>
+                  Due Date {sortBy === 'dueDate' && (sortDirection === 'asc' ? '▲' : '▼')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
