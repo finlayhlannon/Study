@@ -1,27 +1,21 @@
 "use client"
 
-import type React from "react"
-
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Calendar, Hash } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import KnowledgeLevelSelector from "@/components/knowledge-level-selector"
+import TopicCard from "@/components/topic-card"
+import AddTopicDialog from "@/components/add-topic-dialog"
 import { useCourses } from "@/lib/use-courses"
 import type { Topic } from "@/lib/types"
 
-export default function TopicPage() {
+export default function CoursePage() {
   const params = useParams()
   const router = useRouter()
   const courseId = params.courseId as string
-  const topicId = params.topicId as string
-
-  const { getCourse, updateTopic, deleteTopic } = useCourses()
-  const [course, setCourse] = useState<{ id: string; name: string } | null>(null)
-  const [topic, setTopic] = useState<Topic | null>(null)
-  const [notes, setNotes] = useState("")
+  const { getCourse, deleteCourse } = useCourses()
+  const [course, setCourse] = useState<{ id: string; name: string; topics: Topic[] } | null>(null)
 
   useEffect(() => {
     const courseData = getCourse(courseId)
@@ -29,42 +23,18 @@ export default function TopicPage() {
       router.push("/")
       return
     }
+    setCourse(courseData)
+  }, [courseId, getCourse, router])
 
-    const topicData = courseData.topics.find((t) => t.id === topicId)
-    if (!topicData) {
-      router.push(`/courses/${courseId}`)
-      return
-    }
-
-    setCourse({ id: courseData.id, name: courseData.name })
-    setTopic(topicData)
-    setNotes(topicData.notes || "")
-  }, [courseId, topicId, getCourse, router])
-
-  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNotes(e.target.value)
-    if (topic) {
-      updateTopic(courseId, topicId, { ...topic, notes: e.target.value })
-    }
+  if (!course) {
+    return <div className="container p-4">Loading course...</div>
   }
 
-  const handleKnowledgeLevelChange = (level: number) => {
-    if (topic) {
-      const updatedTopic = { ...topic, knowledgeLevel: level }
-      setTopic(updatedTopic)
-      updateTopic(courseId, topicId, updatedTopic)
+  const handleDeleteCourse = () => {
+    if (confirm("Are you sure you want to delete this course?")) {
+      deleteCourse(courseId)
+      router.push("/")
     }
-  }
-
-  const handleDeleteTopic = () => {
-    if (confirm("Are you sure you want to delete this topic?")) {
-      deleteTopic(courseId, topicId)
-      router.push(`/courses/${courseId}`)
-    }
-  }
-
-  if (!course || !topic) {
-    return <div className="container p-4">Loading topic...</div>
   }
 
   return (
@@ -72,52 +42,36 @@ export default function TopicPage() {
       <header className="border-b">
         <div className="container flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4">
-            <Link href={`/courses/${courseId}`}>
+            <Link href="/">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-xl font-medium">{topic.name}</h1>
-              <p className="text-sm text-muted-foreground">{course.name}</p>
-            </div>
+            <h1 className="text-xl font-medium">{course.name}</h1>
           </div>
-          <Button variant="destructive" size="sm" onClick={handleDeleteTopic}>
-            Delete Topic
+          <Button variant="destructive" size="sm" onClick={handleDeleteCourse}>
+            Delete Course
           </Button>
         </div>
       </header>
-      <main className="container grid gap-6 px-4 py-8 sm:px-6 md:py-12">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="flex items-center gap-2 rounded-lg border p-3">
-            <Hash className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Unit {topic.unitNumber}</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border p-3">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Due: {topic.dueDate}</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border p-3">
-            <span className="text-sm font-medium">Knowledge Level:</span>
-            <KnowledgeLevelSelector value={topic.knowledgeLevel} onChange={handleKnowledgeLevelChange} />
-          </div>
+      <main className="container px-4 py-8 sm:px-6 md:py-12">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold tracking-tight">Topics</h2>
+          <AddTopicDialog courseId={courseId}>
+            <Button size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Add Topic
+            </Button>
+          </AddTopicDialog>
         </div>
-
-        {topic.description && (
-          <div className="rounded-lg border p-4">
-            <h3 className="mb-2 font-medium">Description</h3>
-            <p className="text-sm text-muted-foreground">{topic.description}</p>
-          </div>
-        )}
-
-        <div>
-          <h3 className="mb-2 font-medium">Notes</h3>
-          <Textarea
-            className="min-h-[300px] font-mono"
-            placeholder="Start typing your notes here..."
-            value={notes}
-            onChange={handleNotesChange}
-          />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {course.topics.length === 0 ? (
+            <div className="col-span-full rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+              No topics yet. Add your first topic to get started.
+            </div>
+          ) : (
+            course.topics.map((topic) => <TopicCard key={topic.id} courseId={courseId} topic={topic} />)
+          )}
         </div>
       </main>
     </div>
