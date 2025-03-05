@@ -1,16 +1,22 @@
+// lib/types.ts
 export interface Topic {
   id: string
-  unitNumber: number
   name: string
-  description: string
-  dueDate: string
+  description?: string
+  notes?: string
   knowledgeLevel: number
-  notes: string
+  dueDate: string
+}
+
+export interface Unit {
+  id: string
+  name: string
+  number: number
+  topics: Topic[]
 }
 
 export interface Course {
   id: string
   name: string
-  topics: Topic[]
+  units: Unit[]
 }
-
