@@ -39,7 +39,8 @@ export default function CoursePage() {
       let comparison: number;
       switch (sortBy) {
         case 'unitNumber':
-          comparison = a.unitNumber - b.unitNumber;
+          // Compare decimal unit numbers
+          comparison = Number(a.unitNumber) - Number(b.unitNumber);
           break;
         case 'knowledgeLevel':
           comparison = a.knowledgeLevel - b.knowledgeLevel;
