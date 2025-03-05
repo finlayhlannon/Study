@@ -5,15 +5,9 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Calendar, Hash, ArrowUpDown } from "lucide-react"
+import { ArrowLeft, Calendar, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu"
 import KnowledgeLevelSelector from "@/components/knowledge-level-selector"
 import { useCourses } from "@/lib/use-courses"
 import type { Topic } from "@/lib/types"
@@ -28,10 +22,6 @@ export default function TopicPage() {
   const [course, setCourse] = useState<{ id: string; name: string } | null>(null)
   const [topic, setTopic] = useState<Topic | null>(null)
   const [notes, setNotes] = useState("")
-  
-  // New state for sorting
-  const [sortBy, setSortBy] = useState<'unitNumber' | 'knowledgeLevel'>('unitNumber')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     const courseData = getCourse(courseId)
@@ -40,15 +30,7 @@ export default function TopicPage() {
       return
     }
 
-    // Sort topics based on current sort settings
-    const sortedTopics = [...courseData.topics].sort((a, b) => {
-      const comparison = sortBy === 'unitNumber' 
-        ? a.unitNumber - b.unitNumber 
-        : a.knowledgeLevel - b.knowledgeLevel;
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
-    const topicData = sortedTopics.find((t) => t.id === topicId)
+    const topicData = courseData.topics.find((t) => t.id === topicId)
     if (!topicData) {
       router.push(`/courses/${courseId}`)
       return
@@ -57,7 +39,7 @@ export default function TopicPage() {
     setCourse({ id: courseData.id, name: courseData.name })
     setTopic(topicData)
     setNotes(topicData.notes || "")
-  }, [courseId, topicId, getCourse, router, sortBy, sortDirection])
+  }, [courseId, topicId, getCourse, router])
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNotes(e.target.value)
@@ -81,17 +63,6 @@ export default function TopicPage() {
     }
   }
 
-  const handleSortChange = (newSortBy: 'unitNumber' | 'knowledgeLevel') => {
-    // If sorting by the same column, toggle direction
-    if (newSortBy === sortBy) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      // If sorting by a new column, reset to ascending
-      setSortBy(newSortBy)
-      setSortDirection('asc')
-    }
-  }
-
   if (!course || !topic) {
     return <div className="container p-4">Loading topic...</div>
   }
@@ -111,27 +82,9 @@ export default function TopicPage() {
               <p className="text-sm text-muted-foreground">{course.name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <ArrowUpDown className="mr-2 h-4 w-4" />
-                  Sort By: {sortBy === 'unitNumber' ? 'Unit Number' : 'Knowledge Level'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleSortChange('unitNumber')}>
-                  Unit Number {sortBy === 'unitNumber' && (sortDirection === 'asc' ? '▲' : '▼')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSortChange('knowledgeLevel')}>
-                  Knowledge Level {sortBy === 'knowledgeLevel' && (sortDirection === 'asc' ? '▲' : '▼')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="destructive" size="sm" onClick={handleDeleteTopic}>
-              Delete Topic
-            </Button>
-          </div>
+          <Button variant="destructive" size="sm" onClick={handleDeleteTopic}>
+            Delete Topic
+          </Button>
         </div>
       </header>
       <main className="container grid gap-6 px-4 py-8 sm:px-6 md:py-12">
