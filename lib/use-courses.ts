@@ -1,4 +1,3 @@
-// lib/use-courses.ts
 import { useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import type { Course, Unit, Topic } from './types'
@@ -14,7 +13,13 @@ export function useCourses() {
     localStorage.setItem('courses', JSON.stringify(updatedCourses))
   }
 
-  const addCourse = (name: string): Course => {
+  const getCourses = () => courses
+
+  const getCourse = (courseId: string) => {
+    return courses.find(course => course.id === courseId)
+  }
+
+  const addCourse = (name: string) => {
     const newCourse: Course = {
       id: uuidv4(),
       name,
@@ -25,26 +30,18 @@ export function useCourses() {
     return newCourse
   }
 
-  const getCourse = (courseId: string): Course | undefined => {
-    return courses.find(course => course.id === courseId)
-  }
-
-  const getCourses = (): Course[] => {
-    return courses
-  }
-
   const deleteCourse = (courseId: string) => {
     const updatedCourses = courses.filter(course => course.id !== courseId)
     saveCourses(updatedCourses)
   }
 
-  const addUnit = (courseId: string, unitName: string, unitNumber: number): Unit => {
+  const addUnit = (courseId: string, name: string) => {
     const updatedCourses = courses.map(course => {
       if (course.id === courseId) {
         const newUnit: Unit = {
           id: uuidv4(),
-          name: unitName,
-          number: unitNumber,
+          name,
+          courseId,
           topics: []
         }
         return {
@@ -54,12 +51,23 @@ export function useCourses() {
       }
       return course
     })
-
     saveCourses(updatedCourses)
-    return updatedCourses.find(course => course.id === courseId)!.units.slice(-1)[0]
   }
 
-  const addTopic = (courseId: string, unitId: string, topicData: Omit<Topic, 'id' | 'notes'>): Topic => {
+  const deleteUnit = (courseId: string, unitId: string) => {
+    const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+        return {
+          ...course,
+          units: course.units.filter(unit => unit.id !== unitId)
+        }
+      }
+      return course
+    })
+    saveCourses(updatedCourses)
+  }
+
+  const addTopic = (courseId: string, unitId: string, topicData: Omit<Topic, 'id' | 'unitId'>) => {
     const updatedCourses = courses.map(course => {
       if (course.id === courseId) {
         return {
@@ -68,8 +76,8 @@ export function useCourses() {
             if (unit.id === unitId) {
               const newTopic: Topic = {
                 id: uuidv4(),
-                ...topicData,
-                notes: ''
+                unitId,
+                ...topicData
               }
               return {
                 ...unit,
@@ -82,34 +90,6 @@ export function useCourses() {
       }
       return course
     })
-
-    saveCourses(updatedCourses)
-    const targetCourse = updatedCourses.find(course => course.id === courseId)!
-    const targetUnit = targetCourse.units.find(unit => unit.id === unitId)!
-    return targetUnit.topics.slice(-1)[0]
-  }
-
-  const updateTopic = (courseId: string, unitId: string, topicId: string, updatedTopic: Topic) => {
-    const updatedCourses = courses.map(course => {
-      if (course.id === courseId) {
-        return {
-          ...course,
-          units: course.units.map(unit => {
-            if (unit.id === unitId) {
-              return {
-                ...unit,
-                topics: unit.topics.map(topic => 
-                  topic.id === topicId ? updatedTopic : topic
-                )
-              }
-            }
-            return unit
-          })
-        }
-      }
-      return course
-    })
-
     saveCourses(updatedCourses)
   }
 
@@ -131,7 +111,29 @@ export function useCourses() {
       }
       return course
     })
+    saveCourses(updatedCourses)
+  }
 
+  const updateTopic = (courseId: string, unitId: string, topicId: string, updatedTopic: Partial<Topic>) => {
+    const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+        return {
+          ...course,
+          units: course.units.map(unit => {
+            if (unit.id === unitId) {
+              return {
+                ...unit,
+                topics: unit.topics.map(topic => 
+                  topic.id === topicId ? { ...topic, ...updatedTopic } : topic
+                )
+              }
+            }
+            return unit
+          })
+        }
+      }
+      return course
+    })
     saveCourses(updatedCourses)
   }
 
@@ -141,8 +143,9 @@ export function useCourses() {
     addCourse,
     deleteCourse,
     addUnit,
+    deleteUnit,
     addTopic,
-    updateTopic,
-    deleteTopic
+    deleteTopic,
+    updateTopic
   }
 }
