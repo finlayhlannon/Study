@@ -1,131 +1,148 @@
-"use client"
-
-import { useCallback, useEffect, useState } from "react"
-import type { Course, Topic } from "./types"
+// lib/use-courses.ts
+import { useState } from 'react'
+import { v4 as uuidv4 } from 'uuid'
+import type { Course, Unit, Topic } from './types'
 
 export function useCourses() {
-  const [initialized, setInitialized] = useState(false)
-
-  // Initialize local storage with empty courses array if it doesn't exist
-  useEffect(() => {
-    if (typeof window !== "undefined" && !initialized) {
-      const storedCourses = localStorage.getItem("courses")
-      if (!storedCourses) {
-        localStorage.setItem("courses", JSON.stringify([]))
-      }
-      setInitialized(true)
-    }
-  }, [initialized])
-
-  // Get all courses
-  const getCourses = useCallback((): Course[] => {
-    if (typeof window === "undefined") return []
-    const storedCourses = localStorage.getItem("courses")
+  const [courses, setCourses] = useState<Course[]>(() => {
+    const storedCourses = localStorage.getItem('courses')
     return storedCourses ? JSON.parse(storedCourses) : []
-  }, [])
+  })
 
-  // Get a specific course by ID
-  const getCourse = useCallback(
-    (courseId: string): Course | null => {
-      const courses = getCourses()
-      return courses.find((course) => course.id === courseId) || null
-    },
-    [getCourses],
-  )
+  const saveCourses = (updatedCourses: Course[]) => {
+    setCourses(updatedCourses)
+    localStorage.setItem('courses', JSON.stringify(updatedCourses))
+  }
 
-  // Add a new course
-  const addCourse = useCallback(
-    (name: string): Course => {
-      const courses = getCourses()
-      const newCourse: Course = {
-        id: crypto.randomUUID(),
-        name,
-        topics: [],
+  const addCourse = (name: string): Course => {
+    const newCourse: Course = {
+      id: uuidv4(),
+      name,
+      units: []
+    }
+    const updatedCourses = [...courses, newCourse]
+    saveCourses(updatedCourses)
+    return newCourse
+  }
+
+  const getCourse = (courseId: string): Course | undefined => {
+    return courses.find(course => course.id === courseId)
+  }
+
+  const getCourses = (): Course[] => {
+    return courses
+  }
+
+  const deleteCourse = (courseId: string) => {
+    const updatedCourses = courses.filter(course => course.id !== courseId)
+    saveCourses(updatedCourses)
+  }
+
+  const addUnit = (courseId: string, unitName: string, unitNumber: number): Unit => {
+    const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+        const newUnit: Unit = {
+          id: uuidv4(),
+          name: unitName,
+          number: unitNumber,
+          topics: []
+        }
+        return {
+          ...course,
+          units: [...course.units, newUnit]
+        }
       }
-      localStorage.setItem("courses", JSON.stringify([...courses, newCourse]))
-      return newCourse
-    },
-    [getCourses],
-  )
+      return course
+    })
 
-  // Delete a course
-  const deleteCourse = useCallback(
-    (courseId: string): void => {
-      const courses = getCourses()
-      const updatedCourses = courses.filter((course) => course.id !== courseId)
-      localStorage.setItem("courses", JSON.stringify(updatedCourses))
-    },
-    [getCourses],
-  )
+    saveCourses(updatedCourses)
+    return updatedCourses.find(course => course.id === courseId)!.units.slice(-1)[0]
+  }
 
-  // Add a topic to a course
-  const addTopic = useCallback(
-    (courseId: string, topicData: Omit<Topic, "id">): Topic | null => {
-      const courses = getCourses()
-      const courseIndex = courses.findIndex((course) => course.id === courseId)
-
-      if (courseIndex === -1) return null
-
-      const newTopic: Topic = {
-        id: crypto.randomUUID(),
-        ...topicData,
+  const addTopic = (courseId: string, unitId: string, topicData: Omit<Topic, 'id' | 'notes'>): Topic => {
+    const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+        return {
+          ...course,
+          units: course.units.map(unit => {
+            if (unit.id === unitId) {
+              const newTopic: Topic = {
+                id: uuidv4(),
+                ...topicData,
+                notes: ''
+              }
+              return {
+                ...unit,
+                topics: [...unit.topics, newTopic]
+              }
+            }
+            return unit
+          })
+        }
       }
+      return course
+    })
 
-      courses[courseIndex].topics.push(newTopic)
-      localStorage.setItem("courses", JSON.stringify(courses))
+    saveCourses(updatedCourses)
+    const targetCourse = updatedCourses.find(course => course.id === courseId)!
+    const targetUnit = targetCourse.units.find(unit => unit.id === unitId)!
+    return targetUnit.topics.slice(-1)[0]
+  }
 
-      return newTopic
-    },
-    [getCourses],
-  )
-
-  // Update a topic
-  const updateTopic = useCallback(
-    (courseId: string, topicId: string, topicData: Partial<Topic>): boolean => {
-      const courses = getCourses()
-      const courseIndex = courses.findIndex((course) => course.id === courseId)
-
-      if (courseIndex === -1) return false
-
-      const topicIndex = courses[courseIndex].topics.findIndex((topic) => topic.id === topicId)
-
-      if (topicIndex === -1) return false
-
-      courses[courseIndex].topics[topicIndex] = {
-        ...courses[courseIndex].topics[topicIndex],
-        ...topicData,
+  const updateTopic = (courseId: string, unitId: string, topicId: string, updatedTopic: Topic) => {
+    const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+        return {
+          ...course,
+          units: course.units.map(unit => {
+            if (unit.id === unitId) {
+              return {
+                ...unit,
+                topics: unit.topics.map(topic => 
+                  topic.id === topicId ? updatedTopic : topic
+                )
+              }
+            }
+            return unit
+          })
+        }
       }
+      return course
+    })
 
-      localStorage.setItem("courses", JSON.stringify(courses))
-      return true
-    },
-    [getCourses],
-  )
+    saveCourses(updatedCourses)
+  }
 
-  // Delete a topic
-  const deleteTopic = useCallback(
-    (courseId: string, topicId: string): boolean => {
-      const courses = getCourses()
-      const courseIndex = courses.findIndex((course) => course.id === courseId)
+  const deleteTopic = (courseId: string, unitId: string, topicId: string) => {
+    const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+        return {
+          ...course,
+          units: course.units.map(unit => {
+            if (unit.id === unitId) {
+              return {
+                ...unit,
+                topics: unit.topics.filter(topic => topic.id !== topicId)
+              }
+            }
+            return unit
+          })
+        }
+      }
+      return course
+    })
 
-      if (courseIndex === -1) return false
-
-      courses[courseIndex].topics = courses[courseIndex].topics.filter((topic) => topic.id !== topicId)
-
-      localStorage.setItem("courses", JSON.stringify(courses))
-      return true
-    },
-    [getCourses],
-  )
+    saveCourses(updatedCourses)
+  }
 
   return {
     getCourses,
     getCourse,
     addCourse,
     deleteCourse,
+    addUnit,
     addTopic,
     updateTopic,
-    deleteTopic,
+    deleteTopic
   }
 }
-
