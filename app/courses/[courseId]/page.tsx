@@ -3,8 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Plus } from "lucide-react"
+import { ArrowLeft, Plus, ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu"
 import TopicCard from "@/components/topic-card"
 import AddTopicDialog from "@/components/add-topic-dialog"
 import { useCourses } from "@/lib/use-courses"
@@ -16,6 +22,10 @@ export default function CoursePage() {
   const courseId = params.courseId as string
   const { getCourse, deleteCourse } = useCourses()
   const [course, setCourse] = useState<{ id: string; name: string; topics: Topic[] } | null>(null)
+  
+  // New state for sorting
+  const [sortBy, setSortBy] = useState<'unitNumber' | 'knowledgeLevel'>('unitNumber')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     const courseData = getCourse(courseId)
@@ -23,18 +33,38 @@ export default function CoursePage() {
       router.push("/")
       return
     }
-    setCourse(courseData)
-  }, [courseId, getCourse, router])
+    
+    // Sort topics based on current sort settings
+    const sortedTopics = [...courseData.topics].sort((a, b) => {
+      const comparison = sortBy === 'unitNumber' 
+        ? a.unitNumber - b.unitNumber 
+        : a.knowledgeLevel - b.knowledgeLevel;
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
 
-  if (!course) {
-    return <div className="container p-4">Loading course...</div>
-  }
+    setCourse({ ...courseData, topics: sortedTopics })
+  }, [courseId, getCourse, router, sortBy, sortDirection])
 
   const handleDeleteCourse = () => {
     if (confirm("Are you sure you want to delete this course?")) {
       deleteCourse(courseId)
       router.push("/")
     }
+  }
+
+  const handleSortChange = (newSortBy: 'unitNumber' | 'knowledgeLevel') => {
+    // If sorting by the same column, toggle direction
+    if (newSortBy === sortBy) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // If sorting by a new column, reset to ascending
+      setSortBy(newSortBy)
+      setSortDirection('asc')
+    }
+  }
+
+  if (!course) {
+    return <div className="container p-4">Loading course...</div>
   }
 
   return (
@@ -57,12 +87,30 @@ export default function CoursePage() {
       <main className="container px-4 py-8 sm:px-6 md:py-12">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-semibold tracking-tight">Topics</h2>
-          <AddTopicDialog courseId={courseId}>
-            <Button size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              Add Topic
-            </Button>
-          </AddTopicDialog>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                  Sort By: {sortBy === 'unitNumber' ? 'Unit Number' : 'Knowledge Level'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleSortChange('unitNumber')}>
+                  Unit Number {sortBy === 'unitNumber' && (sortDirection === 'asc' ? '▲' : '▼')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('knowledgeLevel')}>
+                  Knowledge Level {sortBy === 'knowledgeLevel' && (sortDirection === 'asc' ? '▲' : '▼')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AddTopicDialog courseId={courseId}>
+              <Button size="sm">
+                <Plus className="mr-1 h-4 w-4" />
+                Add Topic
+              </Button>
+            </AddTopicDialog>
+          </div>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {course.topics.length === 0 ? (
@@ -77,4 +125,3 @@ export default function CoursePage() {
     </div>
   )
 }
-
