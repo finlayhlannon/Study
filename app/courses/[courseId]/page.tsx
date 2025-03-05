@@ -76,6 +76,10 @@ export default function TopicPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
+        <Button variant="outline" size="sm" onClick={() => setSortBy(sortBy === "unitNumber" ? "knowledgeLevel" : "unitNumber")}>
+          Sort by: {sortBy === "unitNumber" ? "Knowledge Level" : "Unit Number"}
+        </Button>
+
         <div className="container flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4">
             <Link href={`/courses/${courseId}`}>
